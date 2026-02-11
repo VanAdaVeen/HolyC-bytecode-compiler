@@ -4,11 +4,12 @@ import (
 	"encoding/binary"
 	"fmt"
 	"os"
+	"strings"
 )
 
 func main() {
 	if len(os.Args) < 2 {
-		fmt.Fprintf(os.Stderr, "Usage: holyc-compiler <file.HC> [--hex | --asm | --bin]\n")
+		fmt.Fprintf(os.Stderr, "Usage: holyc-compiler <file.HC> [--hex | --asm | --bin] [-o output]\n")
 		os.Exit(1)
 	}
 
@@ -20,15 +21,28 @@ func main() {
 	}
 
 	mode := "asm"
-	if len(os.Args) > 2 {
-		switch os.Args[2] {
+	outFile := ""
+	for i := 2; i < len(os.Args); i++ {
+		switch os.Args[i] {
 		case "--hex":
 			mode = "hex"
 		case "--bin":
 			mode = "bin"
 		case "--asm":
 			mode = "asm"
+		case "-o":
+			if i+1 < len(os.Args) {
+				i++
+				outFile = os.Args[i]
+			} else {
+				fmt.Fprintf(os.Stderr, "-o requires a filename\n")
+				os.Exit(1)
+			}
 		}
+	}
+	// Si pas de -o, le fichier de sortie par défaut est <input>.hcb
+	if outFile == "" && mode == "bin" {
+		outFile = strings.TrimSuffix(filename, ".HC") + ".hcb"
 	}
 
 	// 1. Lexer
@@ -58,7 +72,7 @@ func main() {
 	case "hex":
 		printHex(instructions)
 	case "bin":
-		writeBin(instructions)
+		writeBinFile(instructions, outFile)
 	}
 }
 
@@ -90,14 +104,22 @@ func printHex(code []Instruction) {
 	fmt.Println()
 }
 
-func writeBin(code []Instruction) {
+func writeBinFile(code []Instruction, path string) {
+	f, err := os.Create(path)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "error creating %s: %v\n", path, err)
+		os.Exit(1)
+	}
+	defer f.Close()
+
 	for _, inst := range code {
-		os.Stdout.Write([]byte{byte(inst.Op)})
+		f.Write([]byte{byte(inst.Op)})
 		if inst.Op.IsPush() {
 			n := inst.Op.PushSize()
 			buf := make([]byte, 8)
 			binary.LittleEndian.PutUint64(buf, uint64(inst.Operand))
-			os.Stdout.Write(buf[:n])
+			f.Write(buf[:n])
 		}
 	}
+	fmt.Fprintf(os.Stderr, "wrote %s\n", path)
 }

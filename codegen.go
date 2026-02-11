@@ -107,9 +107,21 @@ func (cg *CodeGen) genNode(node Node) {
 		}
 	case *ReturnStmt:
 		if n.Value != nil {
+			// Stocke la valeur de retour à l'offset 0 en mémoire
 			cg.genExpr(n.Value)
+			cg.emitPush(0)    // offset mémoire
+			cg.emit(OP_MSTORE) // mem[0] = valeur
+			// RETURN(offset=0, size=8)
+			// VM pop order: offset=top, size=second
+			cg.emitPush(8) // size (I64 = 8 octets)
+			cg.emitPush(0) // offset
+			cg.emit(OP_RETURN)
+		} else {
+			// return sans valeur → RETURN(0, 0)
+			cg.emitPush(0)
+			cg.emitPush(0)
+			cg.emit(OP_RETURN)
 		}
-		cg.emit(OP_STOP)
 	case *FuncDecl:
 		if n.Body != nil {
 			cg.genNode(n.Body)
