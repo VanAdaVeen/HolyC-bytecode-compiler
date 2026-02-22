@@ -1,0 +1,6 @@
+// Test des opcodes 0x20-0x24
+I64 h = Hash(0, 32);
+I64 a = Rol(4, 0xDEADBEEF00000000);
+I64 b = Ror(4, 0xDEADBEEF00000000);
+I64 c = Popcnt(0xFF00FF00FF00FF00);
+I64 d = Bswap(0x0102030405060708);

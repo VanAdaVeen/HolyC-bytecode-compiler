@@ -34,8 +34,31 @@ The VM is a 64-bit stack machine. All values are `I64` (signed) or `U64` (unsign
 | MODEXP      | 0x0D | base, exp, mod → r  | Modular exponentiation               | 20     |
 | ADDCARRY    | 0x0E | a, b, cin → sum, cout | Addition with carry (pushes 2)     | 5      |
 | FIXMUL18    | 0x0F | a, b → (a×b)/10¹⁸  | Fixed-point multiply, 18 decimals    | 5      |
+| LT          | 0x10 | a, b → a<b          | Unsigned less-than (0 or 1)          | 3      |
+| GT          | 0x11 | a, b → a>b          | Unsigned greater-than (0 or 1)       | 3      |
+| SLT         | 0x12 | a, b → a<b          | Signed less-than I64 (0 or 1)        | 3      |
+| SGT         | 0x13 | a, b → a>b          | Signed greater-than I64 (0 or 1)     | 3      |
+| EQ          | 0x14 | a, b → a==b         | Equality (0 or 1)                    | 3      |
+| ISZERO      | 0x15 | a → a==0            | Zero test (0 or 1)                   | 3      |
+| AND         | 0x16 | a, b → a&b          | Bitwise AND                          | 3      |
+| OR          | 0x17 | a, b → a\|b         | Bitwise OR                           | 3      |
+| XOR         | 0x18 | a, b → a^b          | Bitwise XOR                          | 3      |
+| NOT         | 0x19 | a → ~a              | Bitwise NOT                          | 3      |
+| BYTE        | 0x1A | i, x → byte[i]      | Byte i of x (0=MSB)                  | 3      |
+| SHL         | 0x1B | shift, val → val<<shift | Left shift (logical)             | 3      |
+| SHR         | 0x1C | shift, val → val>>shift | Right shift (logical, unsigned)  | 3      |
+| SAR         | 0x1D | shift, val → val>>>shift | Right shift (arithmetic, signed) | 3      |
+| CLZ         | 0x1E | a → clz(a)          | Count leading zeros (0..64)          | 3      |
+| FIXDIV18    | 0x1F | a, b → (a×10¹⁸)/b  | Fixed-point divide, 18 decimals      | 5      |
+| HASH        | 0x20 | offset, size → h    | Keccak-256 of mem[offset:offset+size]| 30†    |
+| ROL         | 0x21 | shift, val → rotl   | Rotate left 64 bits                  | 3      |
+| ROR         | 0x22 | shift, val → rotr   | Rotate right 64 bits                 | 3      |
+| POPCNT      | 0x23 | a → popcount(a)     | Count bits set to 1                  | 3      |
+| BSWAP       | 0x24 | a → bswap(a)        | Byte-swap (LE↔BE)                    | 3      |
 
-The VM also supports comparison, bitwise, memory, and control-flow opcodes (see [`pkg/codegen/opcode.go`](pkg/codegen/opcode.go)).
+† HASH gas = 30 + 6×⌈size/32⌉
+
+Memory and control-flow opcodes (MSTORE, JUMP, RETURN…) are also available — see [`pkg/codegen/opcode.go`](pkg/codegen/opcode.go).
 
 ## HolyC Syntax Supported
 
@@ -63,8 +86,13 @@ I64 w = FixMul18(a, b);      // FIXMUL18
 I64 x = SignExtend(0, 255);  // SIGNEXTEND
 
 // Unsigned variants (via builtins only)
-I64 q = Div(a, b);    // DIV  (unsigned)
-I64 p = Mod(a, b);    // MOD  (unsigned)
+I64 q = Div(a, b);    // DIV     (unsigned)
+I64 p = Mod(a, b);    // MOD     (unsigned)
+
+// Bit / fixed-point builtins
+I64 z = Clz(0xFF00000000000000);       // CLZ     → 0
+I64 y = FixDiv18(1000000000000000000,
+                  500000000000000000);  // FIXDIV18 → 2×10¹⁸
 
 // Functions with return
 I64 Square(I64 x) {

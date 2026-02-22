@@ -37,7 +37,16 @@ const (
 	OP_BYTE   Opcode = 0x1A // i, x → byte i de x                     gas=3
 	OP_SHL    Opcode = 0x1B // shift, val → val << shift               gas=3
 	OP_SHR    Opcode = 0x1C // shift, val → val >> shift               gas=3
-	OP_SAR    Opcode = 0x1D // shift, val → val >>> shift (signé)      gas=3
+	OP_SAR     Opcode = 0x1D // shift, val → val >>> shift (signé)      gas=3
+	OP_CLZ      Opcode = 0x1E // a → clz(a)             Count Leading Zeros   gas=3
+	OP_FIXDIV18 Opcode = 0x1F // a, b → (a*10^18)/b    Division virgule fixe gas=5
+
+	// Opcodes hash et manipulation de bits
+	OP_HASH   Opcode = 0x20 // offset, size → h      Keccak-256            gas=30+dyn
+	OP_ROL    Opcode = 0x21 // shift, val → rotl(val,shift) Rotation gauche gas=3
+	OP_ROR    Opcode = 0x22 // shift, val → rotr(val,shift) Rotation droite gas=3
+	OP_POPCNT Opcode = 0x23 // a → popcount(a)       Nombre de bits à 1    gas=3
+	OP_BSWAP  Opcode = 0x24 // a → bswap(a)          Inversion octets      gas=3
 
 	// Opcodes de pile et mémoire
 	OP_POP      Opcode = 0x50 // Supprime le sommet de la pile           gas=2
@@ -105,7 +114,15 @@ var opcodeInfo = map[Opcode]struct {
 	OP_NOT:    {"NOT", 3, 1, 1},
 	OP_SHL:    {"SHL", 3, 2, 1},
 	OP_SHR:    {"SHR", 3, 2, 1},
-	OP_SAR:    {"SAR", 3, 2, 1},
+	OP_SAR:      {"SAR", 3, 2, 1},
+	OP_CLZ:      {"CLZ", 3, 1, 1},
+	OP_FIXDIV18: {"FIXDIV18", 5, 2, 1},
+	// Hash et bits
+	OP_HASH:   {"HASH", 30, 2, 1},
+	OP_ROL:    {"ROL", 3, 2, 1},
+	OP_ROR:    {"ROR", 3, 2, 1},
+	OP_POPCNT: {"POPCNT", 3, 1, 1},
+	OP_BSWAP:  {"BSWAP", 3, 1, 1},
 
 	// Pile et mémoire
 	OP_POP:      {"POP", 2, 1, 0},

@@ -39,6 +39,13 @@ func NewCodeGen() *CodeGen {
 			"ModExp":     {OP_MODEXP, 3},
 			"AddCarry":   {OP_ADDCARRY, 3},
 			"FixMul18":   {OP_FIXMUL18, 2},
+			"Clz":        {OP_CLZ, 1},
+			"FixDiv18":   {OP_FIXDIV18, 2},
+			"Hash":       {OP_HASH, 2},
+			"Rol":        {OP_ROL, 2},
+			"Ror":        {OP_ROR, 2},
+			"Popcnt":     {OP_POPCNT, 1},
+			"Bswap":      {OP_BSWAP, 1},
 		},
 	}
 }
