@@ -48,15 +48,52 @@ const (
 	OP_POPCNT Opcode = 0x23 // a → popcount(a)       Nombre de bits à 1    gas=3
 	OP_BSWAP  Opcode = 0x24 // a → bswap(a)          Inversion octets      gas=3
 
+	// Opcodes d'état du contrat
+	OP_ADDRESS        Opcode = 0x30 // → addr            Adresse du contrat courant    gas=2
+	OP_BALANCE        Opcode = 0x31 // addr → bal        Solde d'une adresse           gas=700
+	OP_ORIGIN         Opcode = 0x32 // → addr            Origine de la transaction     gas=2
+	OP_CALLER         Opcode = 0x33 // → addr            Appelant direct               gas=2
+	OP_CALLVALUE      Opcode = 0x34 // → val             Valeur wei de l'appel         gas=2
+	OP_CALLDATALOAD   Opcode = 0x35 // i → data          8 octets calldata à offset i  gas=3
+	OP_CALLDATASIZE   Opcode = 0x36 // → size            Taille des calldata           gas=2
+	OP_CALLDATACOPY   Opcode = 0x37 // dst,src,size →    Copie calldata en mémoire     gas=3+dyn
+	OP_CODESIZE       Opcode = 0x38 // → size            Taille du bytecode courant    gas=2
+	OP_CODECOPY       Opcode = 0x39 // dst,src,size →    Copie bytecode en mémoire     gas=3+dyn
+	OP_GASPRICE       Opcode = 0x3A // → price           Prix du gas (wei/gas)         gas=2
+	OP_EXTCODESIZE    Opcode = 0x3B // addr → size       Taille bytecode externe       gas=700
+	OP_EXTCODECOPY    Opcode = 0x3C // addr,dst,src,size → Copie bytecode externe      gas=700+dyn
+	OP_RETURNDATASIZE Opcode = 0x3D // → size            Taille du dernier returndata  gas=2
+	OP_RETURNDATACOPY Opcode = 0x3E // dst,src,size →    Copie returndata en mémoire   gas=3+dyn
+	OP_EXTCODEHASH    Opcode = 0x3F // addr → hash       Keccak du bytecode externe    gas=700
+
+	// Opcodes de contexte de bloc
+	OP_BLOCKHASH  Opcode = 0x40 // n → hash        Hash du bloc n (256 derniers) gas=20
+	OP_COINBASE   Opcode = 0x41 // → addr          Adresse du validateur         gas=2
+	OP_TIMESTAMP  Opcode = 0x42 // → t             Timestamp Unix du bloc        gas=2
+	OP_NUMBER     Opcode = 0x43 // → n             Numéro du bloc courant        gas=2
+	OP_PREVRANDAO Opcode = 0x44 // → r             Valeur aléatoire du bloc      gas=2
+	OP_GASLIMIT   Opcode = 0x45 // → gl            Gas limit du bloc             gas=2
+	OP_CHAINID    Opcode = 0x46 // → id            ID de la chaîne               gas=2
+	OP_SELFBALANCE Opcode = 0x47 // → bal          Solde du contrat courant      gas=5
+	OP_BASEFEE    Opcode = 0x48 // → fee           Base fee du bloc (EIP-1559)   gas=2
+
 	// Opcodes de pile et mémoire
-	OP_POP      Opcode = 0x50 // Supprime le sommet de la pile           gas=2
-	OP_MLOAD    Opcode = 0x51 // addr → valeur 8 octets LE              gas=3
-	OP_MSTORE   Opcode = 0x52 // addr, val → stocke 8 octets LE         gas=3
-	OP_MSTORE8  Opcode = 0x53 // addr, val → stocke 1 octet             gas=3
-	OP_JUMP     Opcode = 0x56 // dest → saute à dest                    gas=8
-	OP_JUMPI    Opcode = 0x57 // dest, cond → saute si cond!=0          gas=10
-	OP_JUMPDEST Opcode = 0x5B // Marque une destination de saut         gas=1
-	OP_PUSH0    Opcode = 0x5F // Pousse 0                               gas=2
+	OP_POP      Opcode = 0x50 // a →               Supprime le sommet            gas=2
+	OP_MLOAD    Opcode = 0x51 // addr → val        Charge 8 octets LE            gas=3
+	OP_MSTORE   Opcode = 0x52 // addr, val →       Stocke 8 octets LE            gas=3
+	OP_MSTORE8  Opcode = 0x53 // addr, val →       Stocke 1 octet                gas=3
+	OP_SLOAD    Opcode = 0x54 // key → val         Stockage persistant lecture   gas=800
+	OP_SSTORE   Opcode = 0x55 // key, val →        Stockage persistant écriture  gas=dyn
+	OP_JUMP     Opcode = 0x56 // dest →            Saut inconditionnel           gas=8
+	OP_JUMPI    Opcode = 0x57 // dest, cond →      Saut conditionnel             gas=10
+	OP_PC       Opcode = 0x58 // → pc              Compteur ordinal courant      gas=2
+	OP_MSIZE    Opcode = 0x59 // → size            Taille mémoire allouée        gas=2
+	OP_GAS      Opcode = 0x5A // → gas             Gas restant                   gas=2
+	OP_JUMPDEST Opcode = 0x5B // →                 Destination de saut valide    gas=1
+	OP_TLOAD    Opcode = 0x5C // key → val         Stockage transitoire lecture  gas=100
+	OP_TSTORE   Opcode = 0x5D // key, val →        Stockage transitoire écriture gas=100
+	OP_MCOPY    Opcode = 0x5E // dst, src, size →  Copie mémoire→mémoire         gas=3+dyn
+	OP_PUSH0    Opcode = 0x5F // → 0               Pousse 0                      gas=2
 
 	// Opcodes PUSH : poussent N octets (little-endian, étendu à 64 bits)
 	OP_PUSH1 Opcode = 0x60 // Pousse 1 octet
@@ -124,14 +161,51 @@ var opcodeInfo = map[Opcode]struct {
 	OP_POPCNT: {"POPCNT", 3, 1, 1},
 	OP_BSWAP:  {"BSWAP", 3, 1, 1},
 
+	// État du contrat
+	OP_ADDRESS:        {"ADDRESS", 2, 0, 1},
+	OP_BALANCE:        {"BALANCE", 700, 1, 1},
+	OP_ORIGIN:         {"ORIGIN", 2, 0, 1},
+	OP_CALLER:         {"CALLER", 2, 0, 1},
+	OP_CALLVALUE:      {"CALLVALUE", 2, 0, 1},
+	OP_CALLDATALOAD:   {"CALLDATALOAD", 3, 1, 1},
+	OP_CALLDATASIZE:   {"CALLDATASIZE", 2, 0, 1},
+	OP_CALLDATACOPY:   {"CALLDATACOPY", 3, 3, 0},
+	OP_CODESIZE:       {"CODESIZE", 2, 0, 1},
+	OP_CODECOPY:       {"CODECOPY", 3, 3, 0},
+	OP_GASPRICE:       {"GASPRICE", 2, 0, 1},
+	OP_EXTCODESIZE:    {"EXTCODESIZE", 700, 1, 1},
+	OP_EXTCODECOPY:    {"EXTCODECOPY", 700, 4, 0},
+	OP_RETURNDATASIZE: {"RETURNDATASIZE", 2, 0, 1},
+	OP_RETURNDATACOPY: {"RETURNDATACOPY", 3, 3, 0},
+	OP_EXTCODEHASH:    {"EXTCODEHASH", 700, 1, 1},
+
+	// Contexte de bloc
+	OP_BLOCKHASH:   {"BLOCKHASH", 20, 1, 1},
+	OP_COINBASE:    {"COINBASE", 2, 0, 1},
+	OP_TIMESTAMP:   {"TIMESTAMP", 2, 0, 1},
+	OP_NUMBER:      {"NUMBER", 2, 0, 1},
+	OP_PREVRANDAO:  {"PREVRANDAO", 2, 0, 1},
+	OP_GASLIMIT:    {"GASLIMIT", 2, 0, 1},
+	OP_CHAINID:     {"CHAINID", 2, 0, 1},
+	OP_SELFBALANCE: {"SELFBALANCE", 5, 0, 1},
+	OP_BASEFEE:     {"BASEFEE", 2, 0, 1},
+
 	// Pile et mémoire
 	OP_POP:      {"POP", 2, 1, 0},
 	OP_MLOAD:    {"MLOAD", 3, 1, 1},
 	OP_MSTORE:   {"MSTORE", 3, 2, 0},
 	OP_MSTORE8:  {"MSTORE8", 3, 2, 0},
+	OP_SLOAD:    {"SLOAD", 800, 1, 1},
+	OP_SSTORE:   {"SSTORE", 0, 2, 0}, // gas dynamique (cold/warm/refund)
 	OP_JUMP:     {"JUMP", 8, 1, 0},
 	OP_JUMPI:    {"JUMPI", 10, 2, 0},
+	OP_PC:       {"PC", 2, 0, 1},
+	OP_MSIZE:    {"MSIZE", 2, 0, 1},
+	OP_GAS:      {"GAS", 2, 0, 1},
 	OP_JUMPDEST: {"JUMPDEST", 1, 0, 0},
+	OP_TLOAD:    {"TLOAD", 100, 1, 1},
+	OP_TSTORE:   {"TSTORE", 100, 2, 0},
+	OP_MCOPY:    {"MCOPY", 3, 3, 0},
 	OP_PUSH0:    {"PUSH0", 2, 0, 1},
 
 	// PUSH

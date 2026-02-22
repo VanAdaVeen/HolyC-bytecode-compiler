@@ -58,7 +58,55 @@ The VM is a 64-bit stack machine. All values are `I64` (signed) or `U64` (unsign
 
 † HASH gas = 30 + 6×⌈size/32⌉
 
-Memory and control-flow opcodes (MSTORE, JUMP, RETURN…) are also available — see [`pkg/codegen/opcode.go`](pkg/codegen/opcode.go).
+| ADDRESS        | 0x30 | → addr              | Address of current contract          | 2      |
+| BALANCE        | 0x31 | addr → bal          | Balance of an address                | 700    |
+| ORIGIN         | 0x32 | → addr              | Transaction origin address           | 2      |
+| CALLER         | 0x33 | → addr              | Direct caller address                | 2      |
+| CALLVALUE      | 0x34 | → val               | Wei value sent with the call         | 2      |
+| CALLDATALOAD   | 0x35 | i → data            | 8 bytes of calldata at offset i      | 3      |
+| CALLDATASIZE   | 0x36 | → size              | Size of calldata in bytes            | 2      |
+| CALLDATACOPY   | 0x37 | dst, src, size →    | Copy calldata to memory              | 3†     |
+| CODESIZE       | 0x38 | → size              | Size of current bytecode             | 2      |
+| CODECOPY       | 0x39 | dst, src, size →    | Copy bytecode to memory              | 3†     |
+| GASPRICE       | 0x3A | → price             | Gas price (wei/gas)                  | 2      |
+| EXTCODESIZE    | 0x3B | addr → size         | External contract bytecode size      | 700    |
+| EXTCODECOPY    | 0x3C | addr,dst,src,size → | Copy external bytecode to memory     | 700†   |
+| RETURNDATASIZE | 0x3D | → size              | Size of last returndata              | 2      |
+| RETURNDATACOPY | 0x3E | dst, src, size →    | Copy returndata to memory            | 3†     |
+| EXTCODEHASH    | 0x3F | addr → hash         | Keccak hash of external bytecode     | 700    |
+
+† Copy opcodes: gas += 3×⌈size/32⌉
+
+| BLOCKHASH   | 0x40 | n → hash            | Hash of block n (last 256)           | 20     |
+| COINBASE    | 0x41 | → addr              | Miner/validator address              | 2      |
+| TIMESTAMP   | 0x42 | → t                 | Block timestamp (Unix seconds)       | 2      |
+| NUMBER      | 0x43 | → n                 | Current block number                 | 2      |
+| PREVRANDAO  | 0x44 | → r                 | Block randomness (ex-DIFFICULTY)     | 2      |
+| GASLIMIT    | 0x45 | → gl                | Block gas limit                      | 2      |
+| CHAINID     | 0x46 | → id                | Chain ID                             | 2      |
+| SELFBALANCE | 0x47 | → bal               | Balance of current contract          | 5      |
+| BASEFEE     | 0x48 | → fee               | Block base fee (EIP-1559)            | 2      |
+
+| POP      | 0x50 | a →                 | Drop top of stack                    | 2      |
+| MLOAD    | 0x51 | addr → val          | Load 8 bytes LE from memory          | 3†     |
+| MSTORE   | 0x52 | addr, val →         | Store 8 bytes LE to memory           | 3†     |
+| MSTORE8  | 0x53 | addr, val →         | Store low byte to memory             | 3†     |
+| SLOAD    | 0x54 | key → val           | Load from persistent storage         | 800    |
+| SSTORE   | 0x55 | key, val →          | Write to persistent storage          | dyn    |
+| JUMP     | 0x56 | dest →              | Unconditional jump (dest=JUMPDEST)   | 8      |
+| JUMPI    | 0x57 | dest, cond →        | Conditional jump if cond≠0           | 10     |
+| PC       | 0x58 | → pc                | Current program counter value        | 2      |
+| MSIZE    | 0x59 | → size              | Size of allocated memory (bytes)     | 2      |
+| GAS      | 0x5A | → gas               | Remaining gas after this instruction | 2      |
+| JUMPDEST | 0x5B | →                   | Marks a valid jump destination       | 1      |
+| TLOAD    | 0x5C | key → val           | Load from transient storage          | 100    |
+| TSTORE   | 0x5D | key, val →          | Write to transient storage           | 100    |
+| MCOPY    | 0x5E | dst, src, size →    | Memory-to-memory copy                | 3†     |
+| PUSH0    | 0x5F | → 0                 | Push constant 0                      | 2      |
+
+† Memory opcodes: gas += 3×⌈size/32⌉ for expansion cost
+
+See [`pkg/codegen/opcode.go`](pkg/codegen/opcode.go) for the full opcode list.
 
 ## HolyC Syntax Supported
 
