@@ -1,32 +1,34 @@
-package main
+package parser
 
 import (
 	"fmt"
 	"os"
+
+	"holyc-compiler/pkg/lexer"
 )
 
 type Parser struct {
-	lexer  *Lexer
-	cur    Token
-	peek   Token
-	errors []string
+	lex    *lexer.Lexer
+	cur    lexer.Token
+	peek   lexer.Token
+	Errors []string
 }
 
-func NewParser(l *Lexer) *Parser {
-	p := &Parser{lexer: l}
+func NewParser(l *lexer.Lexer) *Parser {
+	p := &Parser{lex: l}
 	p.advance()
 	p.advance()
 	return p
 }
 
-func (p *Parser) advance() Token {
+func (p *Parser) advance() lexer.Token {
 	prev := p.cur
 	p.cur = p.peek
-	p.peek = p.lexer.NextToken()
+	p.peek = p.lex.NextToken()
 	return prev
 }
 
-func (p *Parser) expect(t TokenType) Token {
+func (p *Parser) expect(t lexer.TokenType) lexer.Token {
 	if p.cur.Type != t {
 		p.errorf("expected token %d, got %d ('%s')", t, p.cur.Type, p.cur.Literal)
 	}
@@ -34,12 +36,12 @@ func (p *Parser) expect(t TokenType) Token {
 }
 
 func (p *Parser) errorf(format string, args ...any) {
-	msg := fmt.Sprintf("%s:%d:%d: %s", p.lexer.file, p.cur.Line, p.cur.Col, fmt.Sprintf(format, args...))
-	p.errors = append(p.errors, msg)
+	msg := fmt.Sprintf("%s:%d:%d: %s", p.lex.File, p.cur.Line, p.cur.Col, fmt.Sprintf(format, args...))
+	p.Errors = append(p.Errors, msg)
 	fmt.Fprintln(os.Stderr, msg)
 }
 
-func (p *Parser) match(types ...TokenType) bool {
+func (p *Parser) match(types ...lexer.TokenType) bool {
 	for _, t := range types {
 		if p.cur.Type == t {
 			return true
@@ -48,10 +50,9 @@ func (p *Parser) match(types ...TokenType) bool {
 	return false
 }
 
-// Parse parses an entire program (list of top-level declarations/statements).
 func (p *Parser) Parse() *Program {
 	prog := &Program{}
-	for p.cur.Type != TOK_EOF {
+	for p.cur.Type != lexer.TOK_EOF {
 		node := p.parseTopLevel()
 		if node != nil {
 			prog.Decls = append(prog.Decls, node)
@@ -61,16 +62,13 @@ func (p *Parser) Parse() *Program {
 }
 
 func (p *Parser) parseTopLevel() Node {
-	// Skip preprocessor directives
-	if p.cur.Type == TOK_INCLUDE || p.cur.Type == TOK_DEFINE {
+	if p.cur.Type == lexer.TOK_INCLUDE || p.cur.Type == lexer.TOK_DEFINE {
 		p.advance()
 		return nil
 	}
-	// Type declaration → function or variable
-	if IsType(p.cur.Type) {
+	if lexer.IsType(p.cur.Type) {
 		return p.parseDeclaration()
 	}
-	// Expression statement
 	return p.parseStatement()
 }
 
@@ -79,13 +77,13 @@ func (p *Parser) parseDeclaration() Node {
 	p.advance()
 
 	isPtr := false
-	for p.cur.Type == TOK_STAR {
+	for p.cur.Type == lexer.TOK_STAR {
 		isPtr = true
 		typeName += " *"
 		p.advance()
 	}
 
-	if p.cur.Type != TOK_IDENT {
+	if p.cur.Type != lexer.TOK_IDENT {
 		p.errorf("expected identifier after type")
 		p.advance()
 		return nil
@@ -94,55 +92,50 @@ func (p *Parser) parseDeclaration() Node {
 	name := p.cur.Literal
 	p.advance()
 
-	// Function declaration: I64 Foo(...)
-	if p.cur.Type == TOK_LPAREN {
+	if p.cur.Type == lexer.TOK_LPAREN {
 		return p.parseFuncDecl(typeName, name)
 	}
 
-	// Variable declaration: I64 x = expr;
 	var init Node
-	if p.cur.Type == TOK_ASSIGN {
+	if p.cur.Type == lexer.TOK_ASSIGN {
 		p.advance()
 		init = p.parseExpression()
 	}
-	if p.cur.Type == TOK_SEMICOLON {
+	if p.cur.Type == lexer.TOK_SEMICOLON {
 		p.advance()
 	}
 	return &VarDecl{TypeName: typeName, Name: name, Init: init, IsPtr: isPtr}
 }
 
 func (p *Parser) parseFuncDecl(retType, name string) Node {
-	p.expect(TOK_LPAREN)
+	p.expect(lexer.TOK_LPAREN)
 	var params []FuncParam
-	for p.cur.Type != TOK_RPAREN && p.cur.Type != TOK_EOF {
+	for p.cur.Type != lexer.TOK_RPAREN && p.cur.Type != lexer.TOK_EOF {
 		if len(params) > 0 {
-			p.expect(TOK_COMMA)
+			p.expect(lexer.TOK_COMMA)
 		}
-		param := p.parseFuncParam()
-		params = append(params, param)
+		params = append(params, p.parseFuncParam())
 	}
-	p.expect(TOK_RPAREN)
-
+	p.expect(lexer.TOK_RPAREN)
 	body := p.parseBlock()
 	return &FuncDecl{ReturnType: retType, Name: name, Params: params, Body: body}
 }
 
 func (p *Parser) parseFuncParam() FuncParam {
 	param := FuncParam{}
-	if IsType(p.cur.Type) {
+	if lexer.IsType(p.cur.Type) {
 		param.TypeName = p.cur.Literal
 		p.advance()
-		for p.cur.Type == TOK_STAR {
+		for p.cur.Type == lexer.TOK_STAR {
 			param.TypeName += " *"
 			p.advance()
 		}
 	}
-	if p.cur.Type == TOK_IDENT {
+	if p.cur.Type == lexer.TOK_IDENT {
 		param.Name = p.cur.Literal
 		p.advance()
 	}
-	// Default value: I64 x = 42
-	if p.cur.Type == TOK_ASSIGN {
+	if p.cur.Type == lexer.TOK_ASSIGN {
 		p.advance()
 		param.Default = p.parseExpression()
 	}
@@ -150,66 +143,64 @@ func (p *Parser) parseFuncParam() FuncParam {
 }
 
 func (p *Parser) parseBlock() *Block {
-	p.expect(TOK_LBRACE)
+	p.expect(lexer.TOK_LBRACE)
 	block := &Block{}
-	for p.cur.Type != TOK_RBRACE && p.cur.Type != TOK_EOF {
+	for p.cur.Type != lexer.TOK_RBRACE && p.cur.Type != lexer.TOK_EOF {
 		stmt := p.parseStatement()
 		if stmt != nil {
 			block.Stmts = append(block.Stmts, stmt)
 		}
 	}
-	p.expect(TOK_RBRACE)
+	p.expect(lexer.TOK_RBRACE)
 	return block
 }
 
 func (p *Parser) parseStatement() Node {
 	switch p.cur.Type {
-	case TOK_LBRACE:
+	case lexer.TOK_LBRACE:
 		return p.parseBlock()
-	case TOK_RETURN:
+	case lexer.TOK_RETURN:
 		return p.parseReturn()
-	case TOK_IF:
+	case lexer.TOK_IF:
 		return p.parseIf()
-	case TOK_WHILE:
+	case lexer.TOK_WHILE:
 		return p.parseWhile()
-	case TOK_FOR:
+	case lexer.TOK_FOR:
 		return p.parseFor()
-	case TOK_SEMICOLON:
+	case lexer.TOK_SEMICOLON:
 		p.advance()
 		return nil
 	}
-	// Variable declaration inside function
-	if IsType(p.cur.Type) {
+	if lexer.IsType(p.cur.Type) {
 		return p.parseDeclaration()
 	}
-	// Expression statement
 	expr := p.parseExpression()
-	if p.cur.Type == TOK_SEMICOLON {
+	if p.cur.Type == lexer.TOK_SEMICOLON {
 		p.advance()
 	}
 	return &ExprStmt{Expr: expr}
 }
 
 func (p *Parser) parseReturn() Node {
-	p.advance() // skip 'return'
+	p.advance()
 	var val Node
-	if p.cur.Type != TOK_SEMICOLON {
+	if p.cur.Type != lexer.TOK_SEMICOLON {
 		val = p.parseExpression()
 	}
-	if p.cur.Type == TOK_SEMICOLON {
+	if p.cur.Type == lexer.TOK_SEMICOLON {
 		p.advance()
 	}
 	return &ReturnStmt{Value: val}
 }
 
 func (p *Parser) parseIf() Node {
-	p.advance() // skip 'if'
-	p.expect(TOK_LPAREN)
+	p.advance()
+	p.expect(lexer.TOK_LPAREN)
 	cond := p.parseExpression()
-	p.expect(TOK_RPAREN)
+	p.expect(lexer.TOK_RPAREN)
 	body := p.parseStatement()
 	var elseBody Node
-	if p.cur.Type == TOK_ELSE {
+	if p.cur.Type == lexer.TOK_ELSE {
 		p.advance()
 		elseBody = p.parseStatement()
 	}
@@ -217,202 +208,179 @@ func (p *Parser) parseIf() Node {
 }
 
 func (p *Parser) parseWhile() Node {
-	p.advance() // skip 'while'
-	p.expect(TOK_LPAREN)
+	p.advance()
+	p.expect(lexer.TOK_LPAREN)
 	cond := p.parseExpression()
-	p.expect(TOK_RPAREN)
+	p.expect(lexer.TOK_RPAREN)
 	body := p.parseStatement()
 	return &WhileStmt{Cond: cond, Body: body}
 }
 
 func (p *Parser) parseFor() Node {
-	p.advance() // skip 'for'
-	p.expect(TOK_LPAREN)
+	p.advance()
+	p.expect(lexer.TOK_LPAREN)
 	var init Node
-	if p.cur.Type != TOK_SEMICOLON {
-		if IsType(p.cur.Type) {
+	if p.cur.Type != lexer.TOK_SEMICOLON {
+		if lexer.IsType(p.cur.Type) {
 			init = p.parseDeclaration()
 		} else {
 			init = p.parseExpression()
-			p.expect(TOK_SEMICOLON)
+			p.expect(lexer.TOK_SEMICOLON)
 		}
 	} else {
 		p.advance()
 	}
 	var cond Node
-	if p.cur.Type != TOK_SEMICOLON {
+	if p.cur.Type != lexer.TOK_SEMICOLON {
 		cond = p.parseExpression()
 	}
-	p.expect(TOK_SEMICOLON)
+	p.expect(lexer.TOK_SEMICOLON)
 	var post Node
-	if p.cur.Type != TOK_RPAREN {
+	if p.cur.Type != lexer.TOK_RPAREN {
 		post = p.parseExpression()
 	}
-	p.expect(TOK_RPAREN)
+	p.expect(lexer.TOK_RPAREN)
 	body := p.parseStatement()
 	return &ForStmt{Init: init, Cond: cond, Post: post, Body: body}
 }
 
 // ---- Expression parsing (Pratt / precedence climbing) ----
 
-func (p *Parser) parseExpression() Node {
-	return p.parseAssign()
-}
+func (p *Parser) parseExpression() Node { return p.parseAssign() }
 
 func (p *Parser) parseAssign() Node {
 	left := p.parseOr()
-	if p.match(TOK_ASSIGN, TOK_PLUS_EQ, TOK_MINUS_EQ, TOK_STAR_EQ,
-		TOK_SLASH_EQ, TOK_PERCENT_EQ, TOK_AMP_EQ, TOK_PIPE_EQ,
-		TOK_CARET_EQ, TOK_SHL_EQ, TOK_SHR_EQ) {
+	if p.match(lexer.TOK_ASSIGN, lexer.TOK_PLUS_EQ, lexer.TOK_MINUS_EQ, lexer.TOK_STAR_EQ,
+		lexer.TOK_SLASH_EQ, lexer.TOK_PERCENT_EQ, lexer.TOK_AMP_EQ, lexer.TOK_PIPE_EQ,
+		lexer.TOK_CARET_EQ, lexer.TOK_SHL_EQ, lexer.TOK_SHR_EQ) {
 		op := p.cur.Type
 		p.advance()
-		val := p.parseAssign()
-		return &AssignExpr{Op: op, Target: left, Value: val}
+		return &AssignExpr{Op: op, Target: left, Value: p.parseAssign()}
 	}
 	return left
 }
 
 func (p *Parser) parseOr() Node {
 	left := p.parseAnd()
-	for p.cur.Type == TOK_OR_OR {
+	for p.cur.Type == lexer.TOK_OR_OR {
 		p.advance()
-		right := p.parseAnd()
-		left = &BinaryExpr{Op: TOK_OR_OR, Left: left, Right: right}
+		left = &BinaryExpr{Op: lexer.TOK_OR_OR, Left: left, Right: p.parseAnd()}
 	}
 	return left
 }
 
 func (p *Parser) parseAnd() Node {
 	left := p.parseBitOr()
-	for p.cur.Type == TOK_AND_AND {
+	for p.cur.Type == lexer.TOK_AND_AND {
 		p.advance()
-		right := p.parseBitOr()
-		left = &BinaryExpr{Op: TOK_AND_AND, Left: left, Right: right}
+		left = &BinaryExpr{Op: lexer.TOK_AND_AND, Left: left, Right: p.parseBitOr()}
 	}
 	return left
 }
 
 func (p *Parser) parseBitOr() Node {
 	left := p.parseBitXor()
-	for p.cur.Type == TOK_PIPE {
+	for p.cur.Type == lexer.TOK_PIPE {
 		p.advance()
-		right := p.parseBitXor()
-		left = &BinaryExpr{Op: TOK_PIPE, Left: left, Right: right}
+		left = &BinaryExpr{Op: lexer.TOK_PIPE, Left: left, Right: p.parseBitXor()}
 	}
 	return left
 }
 
 func (p *Parser) parseBitXor() Node {
 	left := p.parseBitAnd()
-	for p.cur.Type == TOK_CARET {
+	for p.cur.Type == lexer.TOK_CARET {
 		p.advance()
-		right := p.parseBitAnd()
-		left = &BinaryExpr{Op: TOK_CARET, Left: left, Right: right}
+		left = &BinaryExpr{Op: lexer.TOK_CARET, Left: left, Right: p.parseBitAnd()}
 	}
 	return left
 }
 
 func (p *Parser) parseBitAnd() Node {
 	left := p.parseEquality()
-	for p.cur.Type == TOK_AMP {
+	for p.cur.Type == lexer.TOK_AMP {
 		p.advance()
-		right := p.parseEquality()
-		left = &BinaryExpr{Op: TOK_AMP, Left: left, Right: right}
+		left = &BinaryExpr{Op: lexer.TOK_AMP, Left: left, Right: p.parseEquality()}
 	}
 	return left
 }
 
 func (p *Parser) parseEquality() Node {
 	left := p.parseComparison()
-	for p.cur.Type == TOK_EQ || p.cur.Type == TOK_NEQ {
+	for p.cur.Type == lexer.TOK_EQ || p.cur.Type == lexer.TOK_NEQ {
 		op := p.cur.Type
 		p.advance()
-		right := p.parseComparison()
-		left = &BinaryExpr{Op: op, Left: left, Right: right}
+		left = &BinaryExpr{Op: op, Left: left, Right: p.parseComparison()}
 	}
 	return left
 }
 
 func (p *Parser) parseComparison() Node {
 	left := p.parseShift()
-	for p.match(TOK_LT, TOK_GT, TOK_LTE, TOK_GTE) {
+	for p.match(lexer.TOK_LT, lexer.TOK_GT, lexer.TOK_LTE, lexer.TOK_GTE) {
 		op := p.cur.Type
 		p.advance()
-		right := p.parseShift()
-		left = &BinaryExpr{Op: op, Left: left, Right: right}
+		left = &BinaryExpr{Op: op, Left: left, Right: p.parseShift()}
 	}
 	return left
 }
 
 func (p *Parser) parseShift() Node {
 	left := p.parseAddSub()
-	for p.cur.Type == TOK_SHL || p.cur.Type == TOK_SHR {
+	for p.cur.Type == lexer.TOK_SHL || p.cur.Type == lexer.TOK_SHR {
 		op := p.cur.Type
 		p.advance()
-		right := p.parseAddSub()
-		left = &BinaryExpr{Op: op, Left: left, Right: right}
+		left = &BinaryExpr{Op: op, Left: left, Right: p.parseAddSub()}
 	}
 	return left
 }
 
 func (p *Parser) parseAddSub() Node {
 	left := p.parseMulDiv()
-	for p.cur.Type == TOK_PLUS || p.cur.Type == TOK_MINUS {
+	for p.cur.Type == lexer.TOK_PLUS || p.cur.Type == lexer.TOK_MINUS {
 		op := p.cur.Type
 		p.advance()
-		right := p.parseMulDiv()
-		left = &BinaryExpr{Op: op, Left: left, Right: right}
+		left = &BinaryExpr{Op: op, Left: left, Right: p.parseMulDiv()}
 	}
 	return left
 }
 
 func (p *Parser) parseMulDiv() Node {
 	left := p.parsePower()
-	for p.match(TOK_STAR, TOK_SLASH, TOK_PERCENT) {
+	for p.match(lexer.TOK_STAR, lexer.TOK_SLASH, lexer.TOK_PERCENT) {
 		op := p.cur.Type
 		p.advance()
-		right := p.parsePower()
-		left = &BinaryExpr{Op: op, Left: left, Right: right}
+		left = &BinaryExpr{Op: op, Left: left, Right: p.parsePower()}
 	}
 	return left
 }
 
 func (p *Parser) parsePower() Node {
 	left := p.parseUnary()
-	// HolyC uses ` for power: a`b = a^b
-	if p.cur.Type == TOK_BACKTICK {
+	if p.cur.Type == lexer.TOK_BACKTICK {
 		p.advance()
-		right := p.parseUnary()
-		left = &BinaryExpr{Op: TOK_BACKTICK, Left: left, Right: right}
+		left = &BinaryExpr{Op: lexer.TOK_BACKTICK, Left: left, Right: p.parseUnary()}
 	}
 	return left
 }
 
 func (p *Parser) parseUnary() Node {
-	if p.cur.Type == TOK_MINUS {
+	switch p.cur.Type {
+	case lexer.TOK_MINUS:
 		p.advance()
-		operand := p.parseUnary()
-		return &UnaryExpr{Op: TOK_MINUS, Operand: operand}
-	}
-	if p.cur.Type == TOK_TILDE {
+		return &UnaryExpr{Op: lexer.TOK_MINUS, Operand: p.parseUnary()}
+	case lexer.TOK_TILDE:
 		p.advance()
-		operand := p.parseUnary()
-		return &UnaryExpr{Op: TOK_TILDE, Operand: operand}
-	}
-	if p.cur.Type == TOK_BANG {
+		return &UnaryExpr{Op: lexer.TOK_TILDE, Operand: p.parseUnary()}
+	case lexer.TOK_BANG:
 		p.advance()
-		operand := p.parseUnary()
-		return &UnaryExpr{Op: TOK_BANG, Operand: operand}
-	}
-	if p.cur.Type == TOK_PLUS_PLUS {
+		return &UnaryExpr{Op: lexer.TOK_BANG, Operand: p.parseUnary()}
+	case lexer.TOK_PLUS_PLUS:
 		p.advance()
-		operand := p.parseUnary()
-		return &UnaryExpr{Op: TOK_PLUS_PLUS, Operand: operand}
-	}
-	if p.cur.Type == TOK_MINUS_MINUS {
+		return &UnaryExpr{Op: lexer.TOK_PLUS_PLUS, Operand: p.parseUnary()}
+	case lexer.TOK_MINUS_MINUS:
 		p.advance()
-		operand := p.parseUnary()
-		return &UnaryExpr{Op: TOK_MINUS_MINUS, Operand: operand}
+		return &UnaryExpr{Op: lexer.TOK_MINUS_MINUS, Operand: p.parseUnary()}
 	}
 	return p.parsePostfix()
 }
@@ -420,81 +388,78 @@ func (p *Parser) parseUnary() Node {
 func (p *Parser) parsePostfix() Node {
 	left := p.parsePrimary()
 	for {
-		if p.cur.Type == TOK_PLUS_PLUS {
+		switch p.cur.Type {
+		case lexer.TOK_PLUS_PLUS:
 			p.advance()
-			left = &PostfixExpr{Op: TOK_PLUS_PLUS, Operand: left}
-		} else if p.cur.Type == TOK_MINUS_MINUS {
+			left = &PostfixExpr{Op: lexer.TOK_PLUS_PLUS, Operand: left}
+		case lexer.TOK_MINUS_MINUS:
 			p.advance()
-			left = &PostfixExpr{Op: TOK_MINUS_MINUS, Operand: left}
-		} else if p.cur.Type == TOK_LPAREN {
-			// Function call on identifier
+			left = &PostfixExpr{Op: lexer.TOK_MINUS_MINUS, Operand: left}
+		case lexer.TOK_LPAREN:
 			if ident, ok := left.(*Identifier); ok {
 				left = p.parseCallExpr(ident.Name)
 			} else {
-				break
+				return left
 			}
-		} else if p.cur.Type == TOK_LBRACKET {
+		case lexer.TOK_LBRACKET:
 			p.advance()
 			index := p.parseExpression()
-			p.expect(TOK_RBRACKET)
+			p.expect(lexer.TOK_RBRACKET)
 			left = &IndexExpr{Array: left, Index: index}
-		} else if p.cur.Type == TOK_DOT {
+		case lexer.TOK_DOT:
 			p.advance()
-			member := p.expect(TOK_IDENT).Literal
-			left = &MemberExpr{Object: left, Member: member, Arrow: false}
-		} else if p.cur.Type == TOK_ARROW {
+			left = &MemberExpr{Object: left, Member: p.expect(lexer.TOK_IDENT).Literal, Arrow: false}
+		case lexer.TOK_ARROW:
 			p.advance()
-			member := p.expect(TOK_IDENT).Literal
-			left = &MemberExpr{Object: left, Member: member, Arrow: true}
-		} else {
-			break
+			left = &MemberExpr{Object: left, Member: p.expect(lexer.TOK_IDENT).Literal, Arrow: true}
+		default:
+			return left
 		}
 	}
-	return left
 }
 
 func (p *Parser) parseCallExpr(name string) Node {
-	p.expect(TOK_LPAREN)
+	p.expect(lexer.TOK_LPAREN)
 	var args []Node
-	for p.cur.Type != TOK_RPAREN && p.cur.Type != TOK_EOF {
+	for p.cur.Type != lexer.TOK_RPAREN && p.cur.Type != lexer.TOK_EOF {
 		if len(args) > 0 {
-			p.expect(TOK_COMMA)
+			p.expect(lexer.TOK_COMMA)
 		}
 		args = append(args, p.parseExpression())
 	}
-	p.expect(TOK_RPAREN)
+	p.expect(lexer.TOK_RPAREN)
 	return &CallExpr{Func: name, Args: args}
 }
 
 func (p *Parser) parsePrimary() Node {
 	switch p.cur.Type {
-	case TOK_INT, TOK_CHAR:
+	case lexer.TOK_INT, lexer.TOK_CHAR:
 		val := p.cur.IntVal
 		p.advance()
 		return &IntLiteral{Value: val}
-	case TOK_FLOAT:
+	case lexer.TOK_FLOAT:
 		val := p.cur.FloatVal
 		p.advance()
 		return &FloatLiteral{Value: val}
-	case TOK_STRING:
+	case lexer.TOK_STRING:
 		val := p.cur.Literal
 		p.advance()
 		return &StringLiteral{Value: val}
-	case TOK_IDENT:
+	case lexer.TOK_IDENT:
 		name := p.cur.Literal
 		p.advance()
 		return &Identifier{Name: name}
-	case TOK_SIZEOF:
+	case lexer.TOK_SIZEOF:
 		p.advance()
-		p.expect(TOK_LPAREN)
+		p.expect(lexer.TOK_LPAREN)
 		typeName := p.cur.Literal
 		p.advance()
-		p.expect(TOK_RPAREN)
+		p.expect(lexer.TOK_RPAREN)
 		return &SizeofExpr{TypeName: typeName}
-	case TOK_LPAREN:
+	case lexer.TOK_LPAREN:
 		p.advance()
 		expr := p.parseExpression()
-		p.expect(TOK_RPAREN)
+		p.expect(lexer.TOK_RPAREN)
 		return expr
 	}
 	p.errorf("unexpected token in expression: '%s'", p.cur.Literal)

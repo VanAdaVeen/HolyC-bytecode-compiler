@@ -1,4 +1,4 @@
-package main
+package lexer
 
 type TokenType int
 
@@ -102,12 +102,12 @@ const (
 )
 
 type Token struct {
-	Type    TokenType
-	Literal string
-	IntVal  int64
+	Type     TokenType
+	Literal  string
+	IntVal   int64
 	FloatVal float64
-	Line    int
-	Col     int
+	Line     int
+	Col      int
 }
 
 var keywords = map[string]TokenType{

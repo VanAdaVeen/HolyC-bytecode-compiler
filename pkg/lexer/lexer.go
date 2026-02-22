@@ -1,4 +1,4 @@
-package main
+package lexer
 
 import (
 	"fmt"
@@ -7,17 +7,17 @@ import (
 )
 
 type Lexer struct {
-	src     string
-	pos     int
-	line    int
-	col     int
-	ch      byte
-	file    string
-	errors  []string
+	src    string
+	pos    int
+	line   int
+	col    int
+	ch     byte
+	File   string
+	Errors []string
 }
 
 func NewLexer(src, filename string) *Lexer {
-	l := &Lexer{src: src, line: 1, col: 0, file: filename}
+	l := &Lexer{src: src, line: 1, col: 0, File: filename}
 	l.advance()
 	return l
 }
@@ -44,8 +44,8 @@ func (l *Lexer) peek() byte {
 }
 
 func (l *Lexer) errorf(format string, args ...any) {
-	msg := fmt.Sprintf("%s:%d:%d: %s", l.file, l.line, l.col, fmt.Sprintf(format, args...))
-	l.errors = append(l.errors, msg)
+	msg := fmt.Sprintf("%s:%d:%d: %s", l.File, l.line, l.col, fmt.Sprintf(format, args...))
+	l.Errors = append(l.Errors, msg)
 	fmt.Fprintln(os.Stderr, msg)
 }
 
@@ -83,8 +83,8 @@ func (l *Lexer) readNumber() Token {
 	line, col := l.line, l.col
 
 	if l.ch == '0' && (l.peek() == 'x' || l.peek() == 'X') {
-		l.advance() // skip 0
-		l.advance() // skip x
+		l.advance()
+		l.advance()
 		for isHexDigit(l.ch) {
 			l.advance()
 		}
@@ -97,8 +97,8 @@ func (l *Lexer) readNumber() Token {
 	}
 
 	if l.ch == '0' && (l.peek() == 'b' || l.peek() == 'B') {
-		l.advance() // skip 0
-		l.advance() // skip b
+		l.advance()
+		l.advance()
 		for l.ch == '0' || l.ch == '1' {
 			l.advance()
 		}
@@ -160,7 +160,7 @@ func (l *Lexer) readIdent() Token {
 
 func (l *Lexer) readString() Token {
 	line, col := l.line, l.col
-	l.advance() // skip opening "
+	l.advance()
 	var sb strings.Builder
 	for l.ch != '"' && l.ch != 0 {
 		if l.ch == '\\' {
@@ -187,13 +187,13 @@ func (l *Lexer) readString() Token {
 		}
 		l.advance()
 	}
-	l.advance() // skip closing "
+	l.advance()
 	return Token{TOK_STRING, sb.String(), 0, 0, line, col}
 }
 
 func (l *Lexer) readCharConst() Token {
 	line, col := l.line, l.col
-	l.advance() // skip '
+	l.advance()
 	var val int64
 	shift := 0
 	for l.ch != '\'' && l.ch != 0 && shift < 64 {
@@ -221,13 +221,13 @@ func (l *Lexer) readCharConst() Token {
 		shift += 8
 		l.advance()
 	}
-	l.advance() // skip closing '
+	l.advance()
 	return Token{TOK_CHAR, "", val, 0, line, col}
 }
 
 func (l *Lexer) handlePreprocessor() Token {
 	line, col := l.line, l.col
-	l.advance() // skip #
+	l.advance()
 	l.skipWhitespace()
 
 	start := l.pos - 1
@@ -262,7 +262,6 @@ func (l *Lexer) handlePreprocessor() Token {
 		_ = strings.TrimSpace(l.src[valStart:valEnd])
 		return Token{TOK_DEFINE, name, 0, 0, line, col}
 	}
-	// Skip to end of line for unknown preprocessor directives
 	for l.ch != '\n' && l.ch != 0 {
 		l.advance()
 	}
@@ -277,7 +276,6 @@ func (l *Lexer) NextToken() Token {
 		return Token{TOK_EOF, "", 0, 0, line, col}
 	}
 
-	// Comments
 	if l.ch == '/' {
 		if l.peek() == '/' {
 			l.skipLineComment()
@@ -291,32 +289,26 @@ func (l *Lexer) NextToken() Token {
 		}
 	}
 
-	// Numbers
 	if isDigit(l.ch) {
 		return l.readNumber()
 	}
 
-	// Identifiers / keywords
 	if isAlpha(l.ch) {
 		return l.readIdent()
 	}
 
-	// Strings
 	if l.ch == '"' {
 		return l.readString()
 	}
 
-	// Char constants
 	if l.ch == '\'' {
 		return l.readCharConst()
 	}
 
-	// Preprocessor
 	if l.ch == '#' {
 		return l.handlePreprocessor()
 	}
 
-	// Operators and punctuation
 	ch := l.ch
 	l.advance()
 
@@ -464,11 +456,9 @@ func (l *Lexer) NextToken() Token {
 	return l.NextToken()
 }
 
-// Helpers
-
-func isDigit(ch byte) bool    { return ch >= '0' && ch <= '9' }
-func isHexDigit(ch byte) bool { return isDigit(ch) || (ch >= 'a' && ch <= 'f') || (ch >= 'A' && ch <= 'F') }
-func isAlpha(ch byte) bool    { return (ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') || ch == '_' }
+func isDigit(ch byte) bool        { return ch >= '0' && ch <= '9' }
+func isHexDigit(ch byte) bool     { return isDigit(ch) || (ch >= 'a' && ch <= 'f') || (ch >= 'A' && ch <= 'F') }
+func isAlpha(ch byte) bool        { return (ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') || ch == '_' }
 func isAlphaNumeric(ch byte) bool { return isAlpha(ch) || isDigit(ch) }
 
 func parseInt(s string) int64 {

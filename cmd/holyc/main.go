@@ -5,11 +5,15 @@ import (
 	"fmt"
 	"os"
 	"strings"
+
+	"holyc-compiler/pkg/codegen"
+	"holyc-compiler/pkg/lexer"
+	"holyc-compiler/pkg/parser"
 )
 
 func main() {
 	if len(os.Args) < 2 {
-		fmt.Fprintf(os.Stderr, "Usage: holyc-compiler <file.HC> [--hex | --asm | --bin] [-o output]\n")
+		fmt.Fprintf(os.Stderr, "Usage: holyc <file.HC> [--hex | --asm | --bin] [-o output]\n")
 		os.Exit(1)
 	}
 
@@ -40,29 +44,28 @@ func main() {
 			}
 		}
 	}
-	// Si pas de -o, le fichier de sortie par défaut est <input>.hcb
 	if outFile == "" && mode == "bin" {
 		outFile = strings.TrimSuffix(filename, ".HC") + ".hcb"
 	}
 
 	// 1. Lexer
-	lexer := NewLexer(string(src), filename)
+	l := lexer.NewLexer(string(src), filename)
 
 	// 2. Parser
-	parser := NewParser(lexer)
-	program := parser.Parse()
+	p := parser.NewParser(l)
+	program := p.Parse()
 
-	if len(parser.errors) > 0 {
-		fmt.Fprintf(os.Stderr, "\n%d parse error(s)\n", len(parser.errors))
+	if len(p.Errors) > 0 {
+		fmt.Fprintf(os.Stderr, "\n%d parse error(s)\n", len(p.Errors))
 		os.Exit(1)
 	}
 
 	// 3. Code generation
-	cg := NewCodeGen()
+	cg := codegen.NewCodeGen()
 	instructions := cg.Generate(program)
 
-	if len(cg.errors) > 0 {
-		fmt.Fprintf(os.Stderr, "\n%d codegen warning(s)\n", len(cg.errors))
+	if len(cg.Errors) > 0 {
+		fmt.Fprintf(os.Stderr, "\n%d codegen warning(s)\n", len(cg.Errors))
 	}
 
 	// 4. Output
@@ -76,20 +79,17 @@ func main() {
 	}
 }
 
-func printAsm(code []Instruction) {
+func printAsm(code []codegen.Instruction) {
 	totalGas := 0
 	for i, inst := range code {
-		gas := 0
-		if info, ok := opcodeInfo[inst.Op]; ok {
-			gas = info.Gas
-		}
+		gas := inst.Gas()
 		totalGas += gas
 		fmt.Printf("  %04d  %-20s  ; 0x%02X  gas=%d\n", i, inst.String(), byte(inst.Op), gas)
 	}
 	fmt.Printf("\n; Total: %d instructions, estimated gas: %d\n", len(code), totalGas)
 }
 
-func printHex(code []Instruction) {
+func printHex(code []codegen.Instruction) {
 	for _, inst := range code {
 		fmt.Printf("%02X", byte(inst.Op))
 		if inst.Op.IsPush() {
@@ -104,7 +104,7 @@ func printHex(code []Instruction) {
 	fmt.Println()
 }
 
-func writeBinFile(code []Instruction, path string) {
+func writeBinFile(code []codegen.Instruction, path string) {
 	f, err := os.Create(path)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "error creating %s: %v\n", path, err)

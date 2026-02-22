@@ -1,4 +1,6 @@
-package main
+package parser
+
+import "holyc-compiler/pkg/lexer"
 
 // Chaque nœud de l'AST implémente Node.
 type Node interface {
@@ -7,29 +9,21 @@ type Node interface {
 
 // ---- Expressions ----
 
-type IntLiteral struct {
-	Value int64
-}
+type IntLiteral struct{ Value int64 }
 func (n *IntLiteral) nodeType() string { return "IntLiteral" }
 
-type FloatLiteral struct {
-	Value float64
-}
+type FloatLiteral struct{ Value float64 }
 func (n *FloatLiteral) nodeType() string { return "FloatLiteral" }
 
-type StringLiteral struct {
-	Value string
-}
+type StringLiteral struct{ Value string }
 func (n *StringLiteral) nodeType() string { return "StringLiteral" }
 
-type Identifier struct {
-	Name string
-}
+type Identifier struct{ Name string }
 func (n *Identifier) nodeType() string { return "Identifier" }
 
 // Opération binaire: a + b, a * b, etc.
 type BinaryExpr struct {
-	Op    TokenType
+	Op    lexer.TokenType
 	Left  Node
 	Right Node
 }
@@ -37,7 +31,7 @@ func (n *BinaryExpr) nodeType() string { return "BinaryExpr" }
 
 // Opération unaire: -a, ~a, !a
 type UnaryExpr struct {
-	Op      TokenType
+	Op      lexer.TokenType
 	Operand Node
 }
 func (n *UnaryExpr) nodeType() string { return "UnaryExpr" }
@@ -60,13 +54,13 @@ func (n *IndexExpr) nodeType() string { return "IndexExpr" }
 type MemberExpr struct {
 	Object Node
 	Member string
-	Arrow  bool // true pour ->, false pour .
+	Arrow  bool
 }
 func (n *MemberExpr) nodeType() string { return "MemberExpr" }
 
 // Assignation: a = b, a += b, etc.
 type AssignExpr struct {
-	Op     TokenType // TOK_ASSIGN, TOK_PLUS_EQ, etc.
+	Op     lexer.TokenType
 	Target Node
 	Value  Node
 }
@@ -74,7 +68,7 @@ func (n *AssignExpr) nodeType() string { return "AssignExpr" }
 
 // Post-incrément/décrément: a++, a--
 type PostfixExpr struct {
-	Op      TokenType
+	Op      lexer.TokenType
 	Operand Node
 }
 func (n *PostfixExpr) nodeType() string { return "PostfixExpr" }
@@ -87,9 +81,7 @@ type CastExpr struct {
 func (n *CastExpr) nodeType() string { return "CastExpr" }
 
 // sizeof(Type)
-type SizeofExpr struct {
-	TypeName string
-}
+type SizeofExpr struct{ TypeName string }
 func (n *SizeofExpr) nodeType() string { return "SizeofExpr" }
 
 // ---- Statements ----
@@ -98,28 +90,24 @@ func (n *SizeofExpr) nodeType() string { return "SizeofExpr" }
 type VarDecl struct {
 	TypeName string
 	Name     string
-	Init     Node   // peut être nil
+	Init     Node
 	IsPtr    bool
 }
 func (n *VarDecl) nodeType() string { return "VarDecl" }
 
 // Statement expression: une expression suivie de ;
-type ExprStmt struct {
-	Expr Node
-}
+type ExprStmt struct{ Expr Node }
 func (n *ExprStmt) nodeType() string { return "ExprStmt" }
 
 // return expr;
-type ReturnStmt struct {
-	Value Node // peut être nil
-}
+type ReturnStmt struct{ Value Node }
 func (n *ReturnStmt) nodeType() string { return "ReturnStmt" }
 
 // if (cond) body [else elsebody]
 type IfStmt struct {
 	Cond Node
 	Body Node
-	Else Node // peut être nil
+	Else Node
 }
 func (n *IfStmt) nodeType() string { return "IfStmt" }
 
@@ -140,9 +128,7 @@ type ForStmt struct {
 func (n *ForStmt) nodeType() string { return "ForStmt" }
 
 // { stmts... }
-type Block struct {
-	Stmts []Node
-}
+type Block struct{ Stmts []Node }
 func (n *Block) nodeType() string { return "Block" }
 
 // Déclaration de fonction
@@ -157,11 +143,9 @@ func (n *FuncDecl) nodeType() string { return "FuncDecl" }
 type FuncParam struct {
 	TypeName string
 	Name     string
-	Default  Node // HolyC supporte les valeurs par défaut
+	Default  Node
 }
 
 // Programme complet
-type Program struct {
-	Decls []Node
-}
+type Program struct{ Decls []Node }
 func (n *Program) nodeType() string { return "Program" }

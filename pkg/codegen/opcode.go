@@ -1,4 +1,4 @@
-package main
+package codegen
 
 import "fmt"
 
@@ -162,6 +162,14 @@ func (op Opcode) PushSize() int {
 type Instruction struct {
 	Op      Opcode
 	Operand int64 // utilisé uniquement par PUSH
+}
+
+// Gas retourne le coût en gas de l'instruction.
+func (inst Instruction) Gas() int {
+	if info, ok := opcodeInfo[inst.Op]; ok {
+		return info.Gas
+	}
+	return 0
 }
 
 func (inst Instruction) String() string {
