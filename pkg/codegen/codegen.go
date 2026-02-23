@@ -85,7 +85,20 @@ func NewCodeGen() *CodeGen {
 			"MLoad":   {OP_MLOAD, 1},
 			"MStore":  {OP_MSTORE, 2},
 			"MStore8": {OP_MSTORE8, 2},
-			"Pop":     {OP_POP, 1},
+			"Pop":      {OP_POP, 1},
+			// Mémoire sous-64 bits
+			"MLoad16":  {OP_MLOAD16, 1},
+			"MLoad16S": {OP_MLOAD16S, 1},
+			"MLoad32":  {OP_MLOAD32, 1},
+			"MLoad32S": {OP_MLOAD32S, 1},
+			"MStore16": {OP_MSTORE16, 2},
+			"MStore32": {OP_MSTORE32, 2},
+			"Sext8":    {OP_SEXT8, 1},
+			"Sext16":   {OP_SEXT16, 1},
+			"Sext32":   {OP_SEXT32, 1},
+			"Trunc8":   {OP_TRUNC8, 1},
+			"Trunc16":  {OP_TRUNC16, 1},
+			"Trunc32":  {OP_TRUNC32, 1},
 		},
 	}
 }

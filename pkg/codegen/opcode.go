@@ -105,6 +105,22 @@ const (
 	OP_PUSH7 Opcode = 0x66 // Pousse 7 octets
 	OP_PUSH8 Opcode = 0x67 // Pousse 8 octets (I64 complet)
 
+	// Opcodes mémoire sous-64 bits (0x68-0x6F)
+	OP_MLOAD16  Opcode = 0x68 // addr → val       Charge 2 octets LE, zero-étendu  gas=3
+	OP_MLOAD16S Opcode = 0x69 // addr → val       Charge 2 octets LE, sign-étendu  gas=3
+	OP_MLOAD32  Opcode = 0x6A // addr → val       Charge 4 octets LE, zero-étendu  gas=3
+	OP_MLOAD32S Opcode = 0x6B // addr → val       Charge 4 octets LE, sign-étendu  gas=3
+	OP_MSTORE16 Opcode = 0x6C // addr, val →      Stocke 2 octets bas de val        gas=3
+	OP_MSTORE32 Opcode = 0x6D // addr, val →      Stocke 4 octets bas de val        gas=3
+	OP_SEXT8    Opcode = 0x6E // a → sext8(a)     Sign-extend bit 7 vers I64        gas=3
+	OP_SEXT16   Opcode = 0x6F // a → sext16(a)    Sign-extend bit 15 vers I64       gas=3
+
+	// Opcodes sign-extension et troncature (0x70-0x73)
+	OP_SEXT32  Opcode = 0x70 // a → sext32(a)        Sign-extend bit 31 vers I64  gas=3
+	OP_TRUNC8  Opcode = 0x71 // a → a & 0xFF         Troncature à U8              gas=3
+	OP_TRUNC16 Opcode = 0x72 // a → a & 0xFFFF       Troncature à U16             gas=3
+	OP_TRUNC32 Opcode = 0x73 // a → a & 0xFFFFFFFF   Troncature à U32             gas=3
+
 	// DUP et SWAP (1-8 seulement dans HolyCVM)
 	OP_DUP1  Opcode = 0x80
 	OP_DUP2  Opcode = 0x81
@@ -207,6 +223,22 @@ var opcodeInfo = map[Opcode]struct {
 	OP_TSTORE:   {"TSTORE", 100, 2, 0},
 	OP_MCOPY:    {"MCOPY", 3, 3, 0},
 	OP_PUSH0:    {"PUSH0", 2, 0, 1},
+
+	// Mémoire sous-64 bits
+	OP_MLOAD16:  {"MLOAD16", 3, 1, 1},
+	OP_MLOAD16S: {"MLOAD16S", 3, 1, 1},
+	OP_MLOAD32:  {"MLOAD32", 3, 1, 1},
+	OP_MLOAD32S: {"MLOAD32S", 3, 1, 1},
+	OP_MSTORE16: {"MSTORE16", 3, 2, 0},
+	OP_MSTORE32: {"MSTORE32", 3, 2, 0},
+	OP_SEXT8:    {"SEXT8", 3, 1, 1},
+	OP_SEXT16:   {"SEXT16", 3, 1, 1},
+
+	// Sign-extension et troncature
+	OP_SEXT32:  {"SEXT32", 3, 1, 1},
+	OP_TRUNC8:  {"TRUNC8", 3, 1, 1},
+	OP_TRUNC16: {"TRUNC16", 3, 1, 1},
+	OP_TRUNC32: {"TRUNC32", 3, 1, 1},
 
 	// PUSH1-PUSH8 : gas=3 (N octets LE, zero-étendus à 64 bits)
 	OP_PUSH1: {"PUSH1", 3, 0, 1},

@@ -103,6 +103,26 @@ The VM is a 64-bit stack machine. All values are `I64` (signed) or `U64` (unsign
 | TSTORE   | 0x5D | key, val →          | Write to transient storage           | 100    |
 | MCOPY    | 0x5E | dst, src, size →    | Memory-to-memory copy                | 3†     |
 | PUSH0    | 0x5F | → 0                 | Push constant 0                      | 2      |
+| PUSH1    | 0x60 | → val               | Push 1-byte immediate (LE, zero-ext) | 3      |
+| PUSH2    | 0x61 | → val               | Push 2-byte immediate                | 3      |
+| PUSH3    | 0x62 | → val               | Push 3-byte immediate                | 3      |
+| PUSH4    | 0x63 | → val               | Push 4-byte immediate                | 3      |
+| PUSH5    | 0x64 | → val               | Push 5-byte immediate                | 3      |
+| PUSH6    | 0x65 | → val               | Push 6-byte immediate                | 3      |
+| PUSH7    | 0x66 | → val               | Push 7-byte immediate                | 3      |
+| PUSH8    | 0x67 | → val               | Push 8-byte immediate (full I64)     | 3      |
+| MLOAD16  | 0x68 | addr → val          | Load 2 bytes LE, zero-extend to U64  | 3†     |
+| MLOAD16S | 0x69 | addr → val          | Load 2 bytes LE, sign-extend to I64  | 3†     |
+| MLOAD32  | 0x6A | addr → val          | Load 4 bytes LE, zero-extend to U64  | 3†     |
+| MLOAD32S | 0x6B | addr → val          | Load 4 bytes LE, sign-extend to I64  | 3†     |
+| MSTORE16 | 0x6C | addr, val →         | Store low 2 bytes of val             | 3†     |
+| MSTORE32 | 0x6D | addr, val →         | Store low 4 bytes of val             | 3†     |
+| SEXT8    | 0x6E | a → sext8(a)        | Sign-extend bit 7 to I64             | 3      |
+| SEXT16   | 0x6F | a → sext16(a)       | Sign-extend bit 15 to I64            | 3      |
+| SEXT32   | 0x70 | a → sext32(a)       | Sign-extend bit 31 to I64            | 3      |
+| TRUNC8   | 0x71 | a → a & 0xFF        | Truncate to U8                       | 3      |
+| TRUNC16  | 0x72 | a → a & 0xFFFF      | Truncate to U16                      | 3      |
+| TRUNC32  | 0x73 | a → a & 0xFFFFFFFF  | Truncate to U32                      | 3      |
 
 † Memory opcodes: gas += 3×⌈size/32⌉ for expansion cost
 
