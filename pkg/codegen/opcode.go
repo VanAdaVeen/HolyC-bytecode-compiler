@@ -95,7 +95,7 @@ const (
 	OP_MCOPY    Opcode = 0x5E // dst, src, size →  Copie mémoire→mémoire         gas=3+dyn
 	OP_PUSH0    Opcode = 0x5F // → 0               Pousse 0                      gas=2
 
-	// Opcodes PUSH : poussent N octets (little-endian, étendu à 64 bits)
+	// Opcodes PUSH : poussent N octets (little-endian, étendu à 64 bits) gas=3
 	OP_PUSH1 Opcode = 0x60 // Pousse 1 octet
 	OP_PUSH2 Opcode = 0x61 // Pousse 2 octets
 	OP_PUSH3 Opcode = 0x62 // Pousse 3 octets
@@ -103,7 +103,7 @@ const (
 	OP_PUSH5 Opcode = 0x64 // Pousse 5 octets
 	OP_PUSH6 Opcode = 0x65 // Pousse 6 octets
 	OP_PUSH7 Opcode = 0x66 // Pousse 7 octets
-	OP_PUSH8 Opcode = 0x67 // Pousse 8 octets (I64 complet)            gas=2
+	OP_PUSH8 Opcode = 0x67 // Pousse 8 octets (I64 complet)
 
 	// DUP et SWAP (1-8 seulement dans HolyCVM)
 	OP_DUP1  Opcode = 0x80
@@ -208,15 +208,15 @@ var opcodeInfo = map[Opcode]struct {
 	OP_MCOPY:    {"MCOPY", 3, 3, 0},
 	OP_PUSH0:    {"PUSH0", 2, 0, 1},
 
-	// PUSH
-	OP_PUSH1: {"PUSH1", 2, 0, 1},
-	OP_PUSH2: {"PUSH2", 2, 0, 1},
-	OP_PUSH3: {"PUSH3", 2, 0, 1},
-	OP_PUSH4: {"PUSH4", 2, 0, 1},
-	OP_PUSH5: {"PUSH5", 2, 0, 1},
-	OP_PUSH6: {"PUSH6", 2, 0, 1},
-	OP_PUSH7: {"PUSH7", 2, 0, 1},
-	OP_PUSH8: {"PUSH8", 2, 0, 1},
+	// PUSH1-PUSH8 : gas=3 (N octets LE, zero-étendus à 64 bits)
+	OP_PUSH1: {"PUSH1", 3, 0, 1},
+	OP_PUSH2: {"PUSH2", 3, 0, 1},
+	OP_PUSH3: {"PUSH3", 3, 0, 1},
+	OP_PUSH4: {"PUSH4", 3, 0, 1},
+	OP_PUSH5: {"PUSH5", 3, 0, 1},
+	OP_PUSH6: {"PUSH6", 3, 0, 1},
+	OP_PUSH7: {"PUSH7", 3, 0, 1},
+	OP_PUSH8: {"PUSH8", 3, 0, 1},
 
 	// DUP/SWAP
 	OP_DUP1:  {"DUP1", 3, 1, 2},
